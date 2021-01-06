@@ -11,9 +11,9 @@ int main(int argc, char* argv[]) {
 	struct sockaddr_in sockAddr;
 
 	sockAddr.sin_family = AF_INET;
-	// sockAddr.sin_addr.s_addr = inet_addr(ip_addr);
+	sockAddr.sin_addr.s_addr = inet_addr(ip_addr);
 	// inet_aton(ip_addr, &(sockAddr.sin_addr));
-	inet_pton(AF_INET, ip_addr, &(sockAddr.sin_addr));
+	// inet_pton(AF_INET, ip_addr, &(sockAddr.sin_addr));
 	sockAddr.sin_port = htons(port);
 	printAddr(&sockAddr);
 }
