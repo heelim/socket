@@ -1,5 +1,7 @@
 all:
-	g++ main.cpp;
+	cd ./server; $(MAKE);
+	cd ./client; $(MAKE);
 
 clean:
-	rm -rf *.out;
+	cd ./server; $(MAKE) clean;
+	cd ./client; $(MAKE) clean;
