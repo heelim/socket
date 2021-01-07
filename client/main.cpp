@@ -16,8 +16,12 @@ int main(int argc, char* argv[]) {
 	struct sockaddr_in addr;
 	int addrlen, readlen, recvbyte, maxbuf;
 
-	char wbuf[BUFSIZE];
 	char rbuf[BUFSIZE];
+	char wbuf[BUFSIZE];
+	char buf[BUFSIZE];
+
+	int maxfds;
+	fd_set fds;
 
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 	if(sock < 0) {
@@ -34,25 +38,45 @@ int main(int argc, char* argv[]) {
 		close(sock);
 		return -1;
 	}
+	char str[10];
+	readlen=read(sock, str, 10-1);
+	str[readlen] = '\0';
+	fprintf(stderr, "Server connected, you are Client(%s)\n", str);
+	maxfds = sock + 1;
+	FD_ZERO(&fds);
 	while(1) {
-		fgets(wbuf, BUFSIZE-1, stdin);
-		readlen = strlen(wbuf);	
-		wbuf[readlen-1] = '\0';
-		if(!strcmp(wbuf, "q")) break;
-		if(readlen < 2) continue;
-		write(sock, wbuf, readlen-1);
-
-		recvbyte = 0;
-		maxbuf = BUFSIZE-1;
-		do {
-			recvbyte += read(sock, rbuf, maxbuf);
-			maxbuf -= recvbyte;
-		} while(recvbyte < readlen-1);
-		rbuf[recvbyte]='\0';
-		printf("Server : %s\n", rbuf);
+		fprintf(stderr, "ME: ");
+		FD_SET(0, &fds);
+		FD_SET(sock, &fds);
+		if (select(maxfds, &fds, NULL, NULL, NULL) < 0){
+			printf("select fail");
+			exit(0);
+		}
+		if (FD_ISSET(sock, &fds)) {
+			if ((readlen = read(sock, rbuf, BUFSIZE)) > 0) {
+				rbuf[readlen] = '\0';
+				fprintf(stderr, "\r%s", rbuf);	
+			}
+		}
+		if (FD_ISSET(0, &fds)) {
+			if (fgets(buf, BUFSIZE, stdin)) {
+				if(strlen(buf)<2) {
+					//fprintf(stderr,"\r");
+					continue;
+				}
+				if(strstr(buf, "/quit") != NULL) {
+					printf("Good bye.\n");
+					close(sock);
+					exit(0);
+				}
+				if(buf[0]== '/') {
+					sprintf(wbuf, "%s\n", buf);
+				}
+				else sprintf(wbuf, "Client(%s): %s\n", str, buf);
+				if (write(sock, wbuf, strlen(wbuf)) < 0) 
+					printf("Error : Write error on socket.");
+			}
+		}
 	}
-	close(sock);
-	printf("connection closed\n");
-
 	return 0;
 }
