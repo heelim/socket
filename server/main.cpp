@@ -170,35 +170,37 @@ int main(int argc, char* argv[]) {
 						}
 					}
 					else if (!strncmp(rbuf, "/upload", 7)) {
-						// char filename[BUFSIZE];
-						// int namelen=strlen(rbuf)-8;
-						// strncpy(filename, rbuf+8, namelen);
-						// filename[namelen-1]='\0';
-						// printf("receiving file: %s\n", filename);
-						// listen(fsock,5);
-						// //client=sizeof(cliaddr);
-						// client_fsock = accept(fsock, (struct sockaddr *)&file_addr, (socklen_t*)&addr_len); 
-						// if(client_fsock == -1) {
-						// 	printf("accept error\n");
-						// }
-						// // printf("file socket accepted\n");
-						// size_t datasize;
-						// FILE* fd = fopen(filename, "w");
-						// char buffer[256];
-						// int ind;
-						// sprintf(buffer, "file socket connected.\n");
-						// write(fsock, buffer, strlen(buffer));
-						// while ((datasize = read(client_fsock, buffer, sizeof(buffer))) > 0) {
-						// 	printf("%s\n", buffer);
-						// 	// ind = fwrite(&buffer, sizeof(char), datasize, fd);
-						//  	//if(ind < datasize) {
-					 //  		//printf("File write failed.\n");;
-						//  	//}
-						// 	// fprintf(fd,"%s", buffer);
-						// }
-						// fclose(fd);
-						// printf("writing done\n");
-						// sprintf(wbuf, "upload done\n");
+						char filename[BUFSIZE];
+						int namelen=strlen(rbuf)-8;
+						strncpy(filename, rbuf+8, namelen);
+						filename[namelen-1]='\0';
+						printf("receiving file: %s\n", filename);
+						listen(fsock,5);
+						//client=sizeof(cliaddr);
+						client_fsock = accept(fsock, (struct sockaddr *)&file_addr, (socklen_t*)&addr_len); 
+						if(client_fsock == -1) {
+							printf("accept error\n");
+						}
+						// printf("file socket accepted\n");
+						size_t datasize;
+						FILE* fd = fopen(filename, "w");
+						char buffer[256];
+						int ind=0;
+						sprintf(buffer, "file socket connected");
+						write(client_fsock, buffer, 22);
+						char readbuf[5]={0,};
+						while ((datasize = read(client_fsock, readbuf, 4)) > 0) {
+							ind = fwrite(&readbuf, 1, datasize, fd);
+							if(ind < datasize) {
+						 		printf("File write failed.\n");;
+							}
+							memset(readbuf, 0, 5);
+							//fprintf(fd, "%s", readbuf);
+						}
+						fclose(fd);
+						printf("writing done\n");
+						sprintf(wbuf, "file received\n");
+						close(client_fsock);
 					}
 					else if (strstr(rbuf, "/help") != NULL) {
 						sprintf(wbuf, "//myroom : shows your current chatting room info\n");

@@ -93,62 +93,63 @@ int main(int argc, char* argv[]) {
 					exit(0);
 				}
 				if(strstr(buf, "/upload") != NULL) {
-// #ifdef THREADING
-// 					char arg[2];
-// 					sprintf(arg,"%d",sock);
-// 					pthread_create(&thread, NULL, upload, (void *)arg);
-// 					pthread_detach(thread);
-// #else
-// 					DIR *d;
-// 					struct dirent *dir;
-// 					char filename[BUFSIZE];
-// 					bool flag=true;
-// 					d = opendir("./");
-// 					if (d) {
-// 						printf("file list of current directory\n");
-// 						while ((dir = readdir(d)) != NULL) {	
-// 							if(dir->d_name[0]=='.') continue;
-// 							printf("\t-%s\n", dir->d_name);
-// 							flag=false;
-// 						}
-// 						if(flag) printf("there is no file in directory\n");
-// 						closedir(d);
-// 					}
-// 					fprintf(stderr, "\rto upload, input filename or type q to cancel : ");
-// 					fgets(filename, BUFSIZE, stdin);
-// 					// if(!strncmp(filename, "q", 2)) {
-// 					if(strlen(filename) < 2 | strstr(filename, "q") != NULL) {
-// 						continue;
-// 					}
-// 					sprintf(wbuf, "/upload %s\n", filename);
-// 					if (write(sock, wbuf, strlen(wbuf)) < 0) 
-// 						printf("Error : Write error on socket.\n");
-// 					if(connect(fsock, (struct sockaddr *)&file_addr, sizeof(file_addr)) == -1) {
-// 						printf("file connection error\n");
-// 						close(fsock);
-// 						continue;
-// 					}		
-// 					int bytes_read;
-// 					char buffer[256];
-// 					readlen = read(sock, buffer, 256);
-// 					buffer[readlen]='\0';
-// 					printf("%s\n", buffer);
+#ifdef THREADING
+					char arg[2];
+					sprintf(arg,"%d",sock);
+					pthread_create(&thread, NULL, upload, (void *)arg);
+					pthread_detach(thread);
+#else
+					DIR *d;
+					struct dirent *dir;
+					char filename[BUFSIZE];
+					bool flag=true;
+					d = opendir("./");
+					if (d) {
+						printf("file list of current directory\n");
+						while ((dir = readdir(d)) != NULL) {	
+							if(dir->d_name[0]=='.') continue;
+							printf("\t-%s\n", dir->d_name);
+							flag=false;
+						}
+						if(flag) printf("there is no file in directory\n");
+						closedir(d);
+					}
+					fprintf(stderr, "\rto upload, input filename or type q to cancel : ");
+					fgets(filename, BUFSIZE, stdin);
+					// if(!strncmp(filename, "q", 2)) {
+					if(strlen(filename) < 2 | strstr(filename, "q") != NULL) {
+						continue;
+					}
+					sprintf(wbuf, "/upload %s\n", filename);
+					//printf("/upload %s\n", filename);
+					if (write(sock, wbuf, strlen(wbuf)) < 0) 
+						printf("Error : Write error on socket.\n");
 
-// 					printf("file to open : %s\n", filename);
-// 					sprintf(filename, "./%s", filename);
-// 					FILE *fd = fopen(filename, "r");
-
-					
-// 					while (!feof(fd)) {
-// 						if ((bytes_read = fread(&buffer, 1, sizeof(buffer), fd)) > 0)
-// 							write(fsock, buffer, bytes_read);
-// 						else
-// 							break;
-// 					}
-// 					close(fsock);
-// 					fclose(fd);
-// 					printf("done sending file\n");
-// #endif
+					if(connect(fsock, (struct sockaddr *)&file_addr, sizeof(file_addr)) == -1) {
+						printf("file connection error\n");
+						close(fsock);
+						continue;
+					}		
+					int bytes_read;
+					char buffer[BUFSIZE];
+					readlen = read(fsock, buffer, 22);
+					buffer[readlen]='\0';
+					printf("%s\n", buffer);
+					// sprintf(buffer, "./%s", filename);
+					// //printf("file to open : %s\n", buffer);
+					sprintf(filename, "%s", buffer);
+					memset(buffer, 0, BUFSIZE);
+					FILE *fd = fopen("test", "r");
+					char readbuf[5]={0,};
+					while (feof(fd) == 0) {
+						bytes_read = fread(&readbuf, sizeof(char), 4, fd);
+						write(fsock, readbuf, bytes_read);
+						memset(readbuf, 0, 5);
+					}
+					close(fsock);
+					fclose(fd);
+					printf("file sended\n");
+#endif
 				}
 				else {
 					if(buf[0]== '/') {
