@@ -3,6 +3,10 @@
 #include <string.h> 
 #include <unistd.h> 
 #include <ctype.h>
+#include <dirent.h>
+#include <fcntl.h>
+
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h> 
 #include <sys/socket.h> 
@@ -115,6 +119,7 @@ int main(int argc, char* argv[]) {
 		}
 		for(i=0; i<num_user; i++) {
 			if(FD_ISSET(client[i].sock, &readfds)) {
+				memset(rbuf, 0, BUFSIZE);				
 				readlen = read(client[i].sock, rbuf, sizeof(rbuf)-1);
 				if(readlen == 0) {
 					printf("client disconnected\n");
@@ -129,6 +134,7 @@ int main(int argc, char* argv[]) {
 				};
 				rbuf[readlen-1]='\0';
 				if (rbuf[0] == '/') {
+					printf("you are in command\n");
 					if (strstr(rbuf, "/myroom") != NULL) {
 						if (client[i].room==0)
 							sprintf(wbuf, "You are in default room\n");
@@ -169,6 +175,24 @@ int main(int argc, char* argv[]) {
 							}
 						}
 					}
+					else if (strstr(rbuf, "/filelist") != NULL) {
+						DIR *d;
+						struct dirent *dir;
+						// char filename[BUFSIZE];
+						bool flag=true;
+						d = opendir("./files");
+						if (d) {
+							sprintf(wbuf, "availablefile list\n");
+							while ((dir = readdir(d)) != NULL) {	
+								if(dir->d_name[0]=='.') continue;
+								sprintf(wbuf, "%s\t-%s\n", wbuf, dir->d_name);
+								flag=false;
+							}
+							if(flag) sprintf(wbuf, "there is no file in directory\n");
+							closedir(d);
+						}
+						else sprintf(wbuf, "There is no available files\n");
+					}
 					else if (!strncmp(rbuf, "/upload", 7)) {
 						char filename[BUFSIZE];
 						int namelen=strlen(rbuf)-8;
@@ -176,37 +200,70 @@ int main(int argc, char* argv[]) {
 						filename[namelen-1]='\0';
 						printf("receiving file: %s\n", filename);
 						listen(fsock,5);
-						//client=sizeof(cliaddr);
 						client_fsock = accept(fsock, (struct sockaddr *)&file_addr, (socklen_t*)&addr_len); 
 						if(client_fsock == -1) {
 							printf("accept error\n");
 						}
-						// printf("file socket accepted\n");
 						size_t datasize;
-						FILE* fd = fopen(filename, "w");
-						char buffer[256];
+						int res_dir=mkdir("./files",0755);
+						sprintf(rbuf, "files/%s", filename);
+						printf("%s\n", rbuf);
+						FILE* fd = fopen(rbuf, "w");
+						char buffer[BUFSIZE];
 						int ind=0;
 						sprintf(buffer, "file socket connected");
 						write(client_fsock, buffer, 22);
-						char readbuf[5]={0,};
-						while ((datasize = read(client_fsock, readbuf, 4)) > 0) {
-							ind = fwrite(&readbuf, 1, datasize, fd);
+
+						memset(buffer, 0, BUFSIZE);
+						while ((datasize = read(client_fsock, buffer, BUFSIZE-1)) > 0) {
+							ind = fwrite(&buffer, 1, datasize, fd);
 							if(ind < datasize) {
 						 		printf("File write failed.\n");;
 							}
-							memset(readbuf, 0, 5);
-							//fprintf(fd, "%s", readbuf);
+							memset(buffer, 0, BUFSIZE);
 						}
-						fclose(fd);
 						printf("writing done\n");
-						sprintf(wbuf, "file received\n");
+						fclose(fd);
+						sprintf(wbuf, "file receive @ server\n");
 						close(client_fsock);
+						printf("file socket closed\n");
+						memset(rbuf, 0, BUFSIZE);	
+					}
+					else if (!strncmp(rbuf, "/download", 9)) {
+						char filename[BUFSIZE];
+						int namelen=strlen(rbuf)-10;
+						strncpy(filename, rbuf+10, namelen);
+						filename[namelen]='\0';
+						printf("sending file: %s\n", filename);
+						listen(fsock,5);
+						client_fsock = accept(fsock, (struct sockaddr *)&file_addr, (socklen_t*)&addr_len); 
+						if(client_fsock == -1) {
+							printf("accept error\n");
+						}
+						sprintf(rbuf, "files/%s", filename);
+						FILE* fd = fopen(rbuf, "r");
+						char buffer[BUFSIZE];
+						sprintf(buffer, "file socket connected");
+						write(client_fsock, buffer, 22);
+						int bytes_read;
+
+						while (feof(fd) == 0) {
+							bytes_read = fread(&buffer, sizeof(char), BUFSIZE-1, fd);
+							write(client_fsock, buffer, bytes_read);
+							memset(buffer, 0, BUFSIZE);
+						}
+						printf("writing done\n");
+						fclose(fd);
+						sprintf(wbuf, "file send @ server\n");
+						close(client_fsock);
+						printf("file socket closed\n");
+						memset(rbuf, 0, BUFSIZE);	
 					}
 					else if (strstr(rbuf, "/help") != NULL) {
-						sprintf(wbuf, "//myroom : shows your current chatting room info\n");
-						sprintf(wbuf, "%s//member : shows member of your current chatting room\n", wbuf);
-						sprintf(wbuf, "%s//moveto (0~9) : move to specified chatting room (default:0)\n", wbuf);
-						sprintf(wbuf, "%s//dm (Target client) (message) : send sirect message to specified target\n", wbuf);						
+						sprintf(wbuf, "/myroom : shows your current chatting room info\n");
+						sprintf(wbuf, "%s/member : shows member of your current chatting room\n", wbuf);
+						sprintf(wbuf, "%s/moveto (0~9) : move to specified chatting room (default:0)\n", wbuf);
+						sprintf(wbuf, "%s/dm (Target client) (message) : send sirect message to specified target\n", wbuf);						
 					}
 					else {
 						sprintf(wbuf, "it is not a valid command. use /help to see available commands\n");
@@ -215,15 +272,11 @@ int main(int argc, char* argv[]) {
 				}
 				else {
 					for(int j=0; j<num_user; j++) {
-						//if(i==j) sprintf(buf, "ME: %s\n", rbuf);
 						if(i==j) continue;
-						// sprintf(buf, "%s\n", client[j].sock, rbuf);
 						if(client[i].room==client[j].room)	write(client[j].sock, rbuf, readlen);
 					}
 				}
-				// printf("Client(%d): %s\n", client[i].sock, rbuf);
 				printf("%s", rbuf);
-
 			}
 		}
 	}

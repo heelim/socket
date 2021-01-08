@@ -84,10 +84,9 @@ int main(int argc, char* argv[]) {
 		if (FD_ISSET(0, &fds)) {
 			if (fgets(buf, BUFSIZE, stdin)) {
 				if(strlen(buf)<2) {
-					//fprintf(stderr,"\r");
 					continue;
 				}
-				if(strstr(buf, "/quit") != NULL) {
+				else if(strstr(buf, "/quit") != NULL) {
 					printf("Good bye.\n");
 					close(sock);
 					exit(0);
@@ -116,12 +115,48 @@ int main(int argc, char* argv[]) {
 					}
 					fprintf(stderr, "\rto upload, input filename or type q to cancel : ");
 					fgets(filename, BUFSIZE, stdin);
-					// if(!strncmp(filename, "q", 2)) {
+
 					if(strlen(filename) < 2 | strstr(filename, "q") != NULL) {
 						continue;
 					}
 					sprintf(wbuf, "/upload %s\n", filename);
-					//printf("/upload %s\n", filename);
+					if (write(sock, wbuf, strlen(wbuf)) < 0) 
+						printf("Error : Write error on socket.\n");
+
+					if(connect(fsock, (struct sockaddr *)&file_addr, sizeof(file_addr)) == -1) {
+						printf("file connection error\n");
+						close(fsock);
+						continue;
+					}
+					int bytes_read;
+					char buffer[BUFSIZE];
+					readlen = read(fsock, buffer, 22);
+					buffer[readlen]='\0';
+					printf("%s\n", buffer);
+					printf("buffer\n");
+					memset(buffer, 0, BUFSIZE);
+					filename[strlen(filename)-1]='\0';
+					FILE *fd = fopen(filename, "r");
+					while (feof(fd) == 0) {
+						bytes_read = fread(&buffer, sizeof(char), BUFSIZE-1, fd);
+						write(fsock, buffer, bytes_read);
+						memset(buffer, 0, BUFSIZE);
+					}
+					close(fsock);
+					fclose(fd);
+					printf("file send @ client\n");
+#endif
+				}
+				else if(!strncmp(buf, "/download", 9)) {
+					char filename[BUFSIZE];
+					int namelen = strlen(buf)-11;
+					if(namelen<1) {
+						printf("you should enter filename\n");
+						continue;
+					}
+					strncpy(filename, buf+10, namelen);
+					filename[namelen]='\0';
+					sprintf(wbuf, "/download %s\n", filename);
 					if (write(sock, wbuf, strlen(wbuf)) < 0) 
 						printf("Error : Write error on socket.\n");
 
@@ -130,26 +165,26 @@ int main(int argc, char* argv[]) {
 						close(fsock);
 						continue;
 					}		
-					int bytes_read;
 					char buffer[BUFSIZE];
 					readlen = read(fsock, buffer, 22);
 					buffer[readlen]='\0';
 					printf("%s\n", buffer);
-					// sprintf(buffer, "./%s", filename);
-					// //printf("file to open : %s\n", buffer);
-					sprintf(filename, "%s", buffer);
 					memset(buffer, 0, BUFSIZE);
-					FILE *fd = fopen("test", "r");
-					char readbuf[5]={0,};
-					while (feof(fd) == 0) {
-						bytes_read = fread(&readbuf, sizeof(char), 4, fd);
-						write(fsock, readbuf, bytes_read);
-						memset(readbuf, 0, 5);
+					filename[strlen(filename)]='\0';
+					FILE *fd = fopen(filename, "w");
+					size_t datasize;
+					int ind=0;
+					memset(buffer, 0, BUFSIZE);
+					while ((datasize = read(fsock, buffer, BUFSIZE-1)) > 0) {
+						ind = fwrite(&buffer, 1, datasize, fd);
+						if(ind < datasize) {
+					 		printf("File write failed.\n");;
+						}
+						memset(buffer, 0, BUFSIZE);
 					}
 					close(fsock);
 					fclose(fd);
-					printf("file sended\n");
-#endif
+					printf("file receive @ client\n");			
 				}
 				else {
 					if(buf[0]== '/') {
