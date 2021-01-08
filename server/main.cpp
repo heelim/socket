@@ -20,9 +20,9 @@ struct client_info {
 int main(int argc, char* argv[]) {
 	//char *ip_addr = "127.0.0.1"; //localhost
 	int port = 8888; //random port
-	int sock, client_sock; 
-	struct sockaddr_in addr, client_addr; 
-	
+	int sock, client_sock;
+	struct sockaddr_in addr, client_addr;
+
 	char rbuf[BUFSIZE]; 
 	char wbuf[BUFSIZE];
 	char buf[BUFSIZE];
@@ -49,7 +49,27 @@ int main(int argc, char* argv[]) {
 		perror("listen error"); 
 		return 1; 
 	} 
+	int fsock, client_fsock; 
+	struct sockaddr_in file_addr; 
 
+	fsock = socket(AF_INET, SOCK_STREAM, 0);
+	if(fsock < 0){ 
+		perror("socket "); 
+		return 1; 
+	} 
+	memset(&file_addr, 0x00, sizeof(file_addr)); 
+	file_addr.sin_family = AF_INET; 
+	file_addr.sin_addr.s_addr = htonl(INADDR_ANY); 
+	file_addr.sin_port = htons(9999); 
+
+	if(bind(fsock, (struct sockaddr *)&file_addr, sizeof(file_addr)) < 0){ 
+		perror("bind error"); 
+		return 1; 
+	} 
+	if(listen(fsock, 5) < 0){ 
+		perror("listen error"); 
+		return 1; 
+	} 
 	// FD_ZERO(&fds);
 	// FD_SET(sock, &fds);
 
@@ -59,9 +79,8 @@ int main(int argc, char* argv[]) {
 
 	int num_user=0;
 	int room_info[MAXROOM][MAXUSER]={0,};
-	// int sock_list[MAXUSER]={0,};
-	// char ip_list[MAXUSER][20];
 	struct client_info client[MAXUSER]; 
+
 	while(1){
 		FD_ZERO(&readfds);
 		FD_SET(sock, &readfds);
@@ -121,7 +140,7 @@ int main(int argc, char* argv[]) {
 							sprintf(wbuf, "You are in default room. Member(s) of current room\n");
 						else
 							sprintf(wbuf, "You are in room#%d. Member(s) of current room\n", client[i].room);
-						sprintf(buf,"");
+						sprintf(buf,"%c", '\0');
 						for(int j=0; j<num_user; j++) {
 							if(room_info[client[i].room][j]==1) {
 								if(client[i].sock==client[j].sock) sprintf(buf, "%sClient(%d)(YOU)\n", buf, client[j].sock);
@@ -149,6 +168,37 @@ int main(int argc, char* argv[]) {
 								continue;
 							}
 						}
+					}
+					else if (!strncmp(rbuf, "/upload", 7)) {
+						// char filename[BUFSIZE];
+						// int namelen=strlen(rbuf)-8;
+						// strncpy(filename, rbuf+8, namelen);
+						// filename[namelen-1]='\0';
+						// printf("receiving file: %s\n", filename);
+						// listen(fsock,5);
+						// //client=sizeof(cliaddr);
+						// client_fsock = accept(fsock, (struct sockaddr *)&file_addr, (socklen_t*)&addr_len); 
+						// if(client_fsock == -1) {
+						// 	printf("accept error\n");
+						// }
+						// // printf("file socket accepted\n");
+						// size_t datasize;
+						// FILE* fd = fopen(filename, "w");
+						// char buffer[256];
+						// int ind;
+						// sprintf(buffer, "file socket connected.\n");
+						// write(fsock, buffer, strlen(buffer));
+						// while ((datasize = read(client_fsock, buffer, sizeof(buffer))) > 0) {
+						// 	printf("%s\n", buffer);
+						// 	// ind = fwrite(&buffer, sizeof(char), datasize, fd);
+						//  	//if(ind < datasize) {
+					 //  		//printf("File write failed.\n");;
+						//  	//}
+						// 	// fprintf(fd,"%s", buffer);
+						// }
+						// fclose(fd);
+						// printf("writing done\n");
+						// sprintf(wbuf, "upload done\n");
 					}
 					else if (strstr(rbuf, "/help") != NULL) {
 						sprintf(wbuf, "//myroom : shows your current chatting room info\n");
