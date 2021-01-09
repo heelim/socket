@@ -1,7 +1,6 @@
 all:
-	cd ./server; $(MAKE);
-	cd ./client; $(MAKE);
+	cd ./src; $(MAKE);
 
 clean:
-	cd ./server; $(MAKE) clean;
-	cd ./client; $(MAKE) clean;
+	cd ./src; $(MAKE) clean;
+	rm -rf bin lib;
