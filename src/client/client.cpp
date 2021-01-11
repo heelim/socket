@@ -12,10 +12,6 @@
 
 #define BUFSIZE 1024
 
-#ifdef THREADING
-void* upload(void*);
-#endif
-
 int main(int argc, char* argv[]) {
 	char ip_addr[] = "127.0.0.1"; //server ip addr
 	int port = 8888; //server port num
@@ -30,9 +26,6 @@ int main(int argc, char* argv[]) {
 
 	int maxfds;
 	fd_set fds;
-#ifdef THREADING
-	pthread_t thread;
-#endif
 
 	int fsock;
 	struct sockaddr_in file_addr;
@@ -92,12 +85,6 @@ int main(int argc, char* argv[]) {
 					exit(0);
 				}
 				if(strstr(buf, "/upload") != NULL) {
-#ifdef THREADING
-					char arg[2];
-					sprintf(arg,"%d",sock);
-					pthread_create(&thread, NULL, upload, (void *)arg);
-					pthread_detach(thread);
-#else
 					DIR *d;
 					struct dirent *dir;
 					char filename[BUFSIZE];
@@ -145,7 +132,6 @@ int main(int argc, char* argv[]) {
 					close(fsock);
 					fclose(fd);
 					printf("file send @ client\n");
-#endif
 				}
 				else if(!strncmp(buf, "/download", 9)) {
 					char filename[BUFSIZE];
@@ -199,42 +185,3 @@ int main(int argc, char* argv[]) {
 	}
 	return 0;
 }
-#ifdef THREADING
-void* upload(void* arg) {
-	char socket[10];
-	sprintf(socket, "%s", (char*)arg);
-	printf("%s\n", socket);
-	DIR *d;
-	struct dirent *dir;
-	char filename[BUFSIZE];
-	bool flag=true;
-	d = opendir("./");
-	if (d) {
-		printf("file list of current directory\n");
-		while ((dir = readdir(d)) != NULL) {	
-			if(dir->d_name[0]=='.') continue;
-			printf("\t-%s\n", dir->d_name);
-			flag=false;
-		}
-		if(flag) printf("there is no file in directory\n");
-		closedir(d);
-	}
-	fprintf(stderr, "\rto upload, input filename or type q to cancel : ");
-	fgets(filename, BUFSIZE, stdin);
-	// if(!strncmp(filename, "q", 2)) {
-	if(strlen(filename) < 2 | strstr(filename, "q") != NULL) {
-		return NULL;
-	}
-	printf("file to open : %s\n", filename);
-	// FILE *fd = fopen(filename, "rb");
-	// size_t rret, wret;
-	// int bytes_read;
-	// while (!feof(fd)) {
-	// 	if ((bytes_read = fread(&buffer, 1, BUFFER_SIZE, fd)) > 0)
-	// 		send(sock, buffer, bytes_read, 0);
-	// 	else
-	// 		break;
-	// }
-	// fclose(fd);
-}
-#endif
