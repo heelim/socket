@@ -14,7 +14,7 @@
 #include <arpa/inet.h> 
 
 #include <iostream>
-#include "../common/CommunicationManager.cpp"
+#include "CommunicationManager.h"
 #define BUFSIZE 1024
 #define MAXUSER 50
 #define MAXROOM 10
@@ -32,6 +32,12 @@ int main(int argc, char* argv[]) {
 	fport = 9999;
 	int sock, client_sock;
 	struct sockaddr_in addr, client_addr;
+	int fsock, client_fsock; 
+	struct sockaddr_in file_addr;
+
+	sock = server.tcp_listen(INADDR_ANY, port, 5);
+
+	fsock = server.tcp_listen(INADDR_ANY, fport, 5);
 
 	char rbuf[BUFSIZE]; 
 	char wbuf[BUFSIZE];
@@ -41,13 +47,7 @@ int main(int argc, char* argv[]) {
 	int maxfd = 0;
 	fd_set readfds;
 
-	int res, i;
-
-	sock = server.tcp_listen(INADDR_ANY, port, 5);
-
-	int fsock, client_fsock; 
-	struct sockaddr_in file_addr; 
-	fsock = server.tcp_listen(INADDR_ANY, fport, 5);
+	int i, j;
 
 	addr_len = sizeof(client_addr); 
 	printf("waiting for client..\n"); 
@@ -152,7 +152,6 @@ int main(int argc, char* argv[]) {
 					else if (strstr(rbuf, "/filelist") != NULL) {
 						DIR *d;
 						struct dirent *dir;
-						// char filename[BUFSIZE];
 						bool flag=true;
 						d = opendir("./files");
 						if (d) {
@@ -252,7 +251,7 @@ int main(int argc, char* argv[]) {
 					write(client[i].sock, wbuf, strlen(wbuf));
 				}
 				else {
-					for(int j=0; j<num_user; j++) {
+					for(j=0; j<num_user; j++) {
 						if(i==j) continue;
 						if(client[i].room==client[j].room)	write(client[j].sock, rbuf, readlen);
 					}

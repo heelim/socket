@@ -15,7 +15,7 @@ MKDIR_P = mkdir -p
 directories: ${OUT_DIR}
 
 ${OUT_DIR}:
-        ${MKDIR_P} ${OUT_DIR}
+	${MKDIR_P} ${OUT_DIR}
 
 # common : dir
 # 	cd common;

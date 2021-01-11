@@ -2,31 +2,26 @@
 SRC_PATH = ./src
 BIN_PATH = ./bin
 LIB_PATH = ./lib
-OBJ_PATH = ./include
+INC_PATH = ./include
 
 OUT_DIR = $(BIN_PATH) $(LIB_PATH)
 MKDIR_P = mkdir -p
 
 .PHONY: all
-all : common server client
+all : common server client test
 
 .PHONY: common
-common:
-	echo notihing for common
+common: directories
+	g++ $(SRC_PATH)/common/CommunicationManager.cpp -c -I$(INC_PATH) -o $(LIB_PATH)/CommunicationManager.o;
+	ar -cr $(LIB_PATH)/libcom.a $(LIB_PATH)/CommunicationManager.o
 
 .PHONY: server
 server:
-	g++ server/server.cpp -o server/server
+	g++ $(SRC_PATH)/server/server.cpp -lcom -L$(LIB_PATH) -I$(INC_PATH) -o $(BIN_PATH)/server
 
 .PHONY: client
 client:
-	g++ client/client.cpp -o client/client
-	rm -rf client/1 client/2
-	mkdir client/1 client/2
-	cp client/client client/1/
-	cp client/client client/2/
-	cp client/make client/1/make.1
-	cp client/make client/2/make.2
+	g++ $(SRC_PATH)/client/client.cpp -L$(LIB_PATH) -I$(INC_PATH) -o $(BIN_PATH)/client
 
 .PHONY: directories
 directories: ${OUT_DIR}
@@ -34,10 +29,20 @@ directories: ${OUT_DIR}
 ${OUT_DIR}:
 	${MKDIR_P} ${OUT_DIR}
 
+.PHONY: test
+test: 
+	${MKDIR_P} test;
+	${MKDIR_P} test/server test/client1 test/client2
+	cp $(BIN_PATH)/server test/server/
+	cp $(BIN_PATH)/client test/client1/
+	cp $(BIN_PATH)/client test/client2/
+	cp $(SRC_PATH)/client/make test/client1/make.1
+	cp $(SRC_PATH)/client/make test/client2/make.2
+
 .PHONY: clean
 clean :
 	rm -rf $(OUT_DIR);
-	rm -rf ./client/1 ./client/2
+	rm -rf test;
 
 # common : dir
 # 	cd common;
