@@ -13,6 +13,8 @@
 #include <netinet/in.h> 
 #include <arpa/inet.h> 
 
+#include <iostream>
+#include "../common/CommunicationManager.cpp"
 #define BUFSIZE 1024
 #define MAXUSER 50
 #define MAXROOM 10
@@ -23,64 +25,38 @@ struct client_info {
 	char ip[20];
 };
 int main(int argc, char* argv[]) {
-	//char *ip_addr = "127.0.0.1"; //localhost
-	int port = 8888; //random port
+	CommunicationManager server;
+
+	int port, fport;
+	port = 8888; 
+	fport = 9999;
 	int sock, client_sock;
 	struct sockaddr_in addr, client_addr;
 
 	char rbuf[BUFSIZE]; 
 	char wbuf[BUFSIZE];
 	char buf[BUFSIZE];
-	int readlen, addr_len, recv_len; 
+	int readlen, addr_len; 
 	
 	int maxfd = 0;
-	fd_set fds, readfds;
-	int res, i;
-	sock = socket(AF_INET, SOCK_STREAM, 0);
-	if(sock < 0){ 
-		perror("socket "); 
-		return 1; 
-	} 
-	memset(&addr, 0x00, sizeof(addr)); 
-	addr.sin_family = AF_INET; 
-	addr.sin_addr.s_addr = htonl(INADDR_ANY); 
-	addr.sin_port = htons(port); 
+	fd_set readfds;
 
-	if(bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0){ 
-		perror("bind error"); 
-		return 1; 
-	} 
-	if(listen(sock, 5) < 0){ 
-		perror("listen error"); 
-		return 1; 
-	} 
+	int res, i;
+
+	server.addr_init(port, &addr);
+	sock = server.sock_init(&addr);
+	server.tcp_listen(sock);
+
 	int fsock, client_fsock; 
 	struct sockaddr_in file_addr; 
 
-	fsock = socket(AF_INET, SOCK_STREAM, 0);
-	if(fsock < 0){ 
-		perror("socket "); 
-		return 1; 
-	} 
-	memset(&file_addr, 0x00, sizeof(file_addr)); 
-	file_addr.sin_family = AF_INET; 
-	file_addr.sin_addr.s_addr = htonl(INADDR_ANY); 
-	file_addr.sin_port = htons(9999); 
+	server.addr_init(fport, &file_addr);
+	fsock = server.sock_init(&file_addr);
+	server.tcp_listen(fsock);
 
-	if(bind(fsock, (struct sockaddr *)&file_addr, sizeof(file_addr)) < 0){ 
-		perror("bind error"); 
-		return 1; 
-	} 
-	if(listen(fsock, 5) < 0){ 
-		perror("listen error"); 
-		return 1; 
-	} 
-	// FD_ZERO(&fds);
-	// FD_SET(sock, &fds);
 
 	addr_len = sizeof(client_addr); 
 	printf("waiting for client..\n"); 
-
 
 	int num_user=0;
 	int room_info[MAXROOM][MAXUSER]={0,};
@@ -109,8 +85,7 @@ int main(int argc, char* argv[]) {
 			}
 			printf("client connected\n");
 			printf("clinet ip : %s: %d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-			// char connection_msg[]="connected\0";
-			// write(client_sock, connection_msg, strlen(connection_msg));
+
 			char client_id[10];
 			sprintf(client_id, "%d", client_sock);
 			write(client_sock, client_id, strlen(client_id));

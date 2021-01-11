@@ -21,6 +21,12 @@ server:
 .PHONY: client
 client:
 	g++ client/client.cpp -o client/client
+	rm -rf client/1 client/2
+	mkdir client/1 client/2
+	cp client/client client/1/
+	cp client/client client/2/
+	cp client/make client/1/make.1
+	cp client/make client/2/make.2
 
 .PHONY: directories
 directories: ${OUT_DIR}
@@ -31,6 +37,7 @@ ${OUT_DIR}:
 .PHONY: clean
 clean :
 	rm -rf $(OUT_DIR)
+	rm -rf ./client/1 ./client/2
 
 # common : dir
 # 	cd common;
