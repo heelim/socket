@@ -12,8 +12,8 @@ all : common server client test
 
 .PHONY: common
 common: directories
-# 	g++ $(SRC_PATH)/common/CommunicationManager.cpp -c -I$(INC_PATH) -o $(LIB_PATH)/CommunicationManager.o;
-# 	ar -cr $(LIB_PATH)/libcom.a $(LIB_PATH)/CommunicationManager.o
+	g++ $(SRC_PATH)/common/CommunicationManager.cpp -c -I$(INC_PATH) -o $(LIB_PATH)/CommunicationManager.o;
+	ar -cr $(LIB_PATH)/libcom.a $(LIB_PATH)/CommunicationManager.o
 
 .PHONY: server
 server:
