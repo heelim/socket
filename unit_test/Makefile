@@ -5,17 +5,32 @@ LIB_PATH = ./lib
 OBJ_PATH = ./include
 
 OUT_DIR = $(BIN_PATH) $(LIB_PATH)
-
-all : common server client
-
 MKDIR_P = mkdir -p
 
-.PHONY: directories
+.PHONY: all
+all : common server client
 
+.PHONY: common
+common:
+	echo notihing for common
+
+.PHONY: server
+server:
+	g++ server/server.cpp -o server/server
+
+.PHONY: client
+client:
+	g++ client/client.cpp -o client/client
+
+.PHONY: directories
 directories: ${OUT_DIR}
 
 ${OUT_DIR}:
-        ${MKDIR_P} ${OUT_DIR}
+	${MKDIR_P} ${OUT_DIR}
+
+.PHONY: clean
+clean :
+	rm -rf $(OUT_DIR)
 
 # common : dir
 # 	cd common;
