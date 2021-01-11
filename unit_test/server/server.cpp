@@ -43,17 +43,11 @@ int main(int argc, char* argv[]) {
 
 	int res, i;
 
-	server.addr_init(port, &addr);
-	sock = server.sock_init(&addr);
-	server.tcp_listen(sock);
+	sock = server.tcp_listen(INADDR_ANY, port, 5);
 
 	int fsock, client_fsock; 
 	struct sockaddr_in file_addr; 
-
-	server.addr_init(fport, &file_addr);
-	fsock = server.sock_init(&file_addr);
-	server.tcp_listen(fsock);
-
+	fsock = server.tcp_listen(INADDR_ANY, fport, 5);
 
 	addr_len = sizeof(client_addr); 
 	printf("waiting for client..\n"); 

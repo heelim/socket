@@ -16,10 +16,7 @@
 class CommunicationManager {
 public:
 	// CommunicationManager();
-	// sockaddr_in* addr_init(char*, int, sockaddr_in);
-	void addr_init(int, sockaddr_in*);
-	int sock_init(sockaddr_in*);
-	void tcp_listen(int);
+	int tcp_listen(int, int, int);
 	int tcp_connect(int, sockaddr_in*);
 	void tcp_close(int);
 private:
@@ -41,31 +38,24 @@ private:
 
 // 	return &addr;
 // }
-void CommunicationManager::addr_init(int port, sockaddr_in* addr) {
-	memset(addr, 0x00, sizeof(*addr)); 
-	(*addr).sin_family = AF_INET; 
-	(*addr).sin_addr.s_addr = htonl(INADDR_ANY); 
-	(*addr).sin_port = htons(port); 
-}
-int CommunicationManager::sock_init(sockaddr_in* addr) {
-	int sock;
-	if(socket(AF_INET, SOCK_STREAM, 0) < 0){ 
-		perror("socket_init error"); 
-		return 1; 
-	}
-	else {
-		if(bind(sock, (struct sockaddr *)addr, sizeof(*addr)) < 0){ 
-			perror("bind error"); 
-			return 1; 
-		} 
-		return sock;
-	}
-}
-void CommunicationManager::tcp_listen(int sock) {
-	if(listen(sock, 5) < 0){ 
-		perror("listen error"); 
-		return; 
-	} 
+int CommunicationManager::tcp_listen(int host, int port, int backlog) {
+    int sock;
+    struct sockaddr_in servaddr;
+
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock == -1) {
+        perror("socket fail");
+        exit(1);
+    }
+    bzero((char *)&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(host);
+    servaddr.sin_port = htons(port);
+    if (bind(sock, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        perror("bind fail");  exit(1);
+    }
+    listen(sock, backlog);
+    return sock;
 }
 int CommunicationManager::tcp_connect(int sock, sockaddr_in* addr) {
 	if(connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
