@@ -1,51 +1,31 @@
 #include "common.h"
+#include "CommunicationManager.h"
+
+char rbuf[BUFSIZE];
+char wbuf[BUFSIZE];
+char buf[BUFSIZE];
 
 int main(int argc, char* argv[]) {
+
+	CommunicationManager client;
+
 	char ip_addr[] = "127.0.0.1"; //server ip addr
 	int port = 8888; //server port num
-
+	int fport = 9999;
 	int sock;
-	struct sockaddr_in addr;
-	int addrlen, readlen, recvbyte, maxbuf;
+	int fsock;
+	sock = client.tcp_connect(ip_addr, port);
 
-	char rbuf[BUFSIZE];
-	char wbuf[BUFSIZE];
-	char buf[BUFSIZE];
+	int readlen;
 
 	int maxfds;
 	fd_set fds;
 
-	int fsock;
-	struct sockaddr_in file_addr;
-	fsock = socket(AF_INET, SOCK_STREAM, 0);
-	if(fsock < 0) {
-		printf("socket init error\n");
-		return -1;
-	}
-	memset(&file_addr, 0, sizeof(file_addr));
-	file_addr.sin_family = AF_INET;
-	file_addr.sin_addr.s_addr = inet_addr(ip_addr);
-	file_addr.sin_port = htons(9999);
-
-	sock = socket(AF_INET, SOCK_STREAM, 0);
-	if(sock < 0) {
-		printf("socket init error\n");
-		return -1;
-	}
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(ip_addr);
-	addr.sin_port = htons(port);
-
-	if(connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-		printf("connection error");
-		close(sock);
-		return -1;
-	}
 	char str[10];
 	readlen=read(sock, str, 10-1);
 	str[readlen] = '\0';
 	fprintf(stderr, "Server connected, you are Client(%s)\n", str);
+
 	maxfds = sock + 1;
 	FD_ZERO(&fds);
 	while(1) {
@@ -57,7 +37,7 @@ int main(int argc, char* argv[]) {
 			exit(0);
 		}
 		if (FD_ISSET(sock, &fds)) {
-			if ((readlen = read(sock, rbuf, BUFSIZE)) > 0) {
+			if ((readlen = recv(sock, rbuf, BUFSIZE, 0)) > 0) {
 				rbuf[readlen] = '\0';
 				fprintf(stderr, "\r%s", rbuf);	
 			}
@@ -68,14 +48,14 @@ int main(int argc, char* argv[]) {
 					continue;
 				}
 				else if(strstr(buf, "/quit") != NULL) {
+					client.tcp_close(sock);
+
 					printf("Good bye.\n");
-					close(sock);
 					exit(0);
 				}
 				if(strstr(buf, "/upload") != NULL) {
 					DIR *d;
 					struct dirent *dir;
-					char filename[BUFSIZE];
 					bool flag=true;
 					d = opendir("./");
 					if (d) {
@@ -88,36 +68,32 @@ int main(int argc, char* argv[]) {
 						if(flag) printf("there is no file in directory\n");
 						closedir(d);
 					}
-					fprintf(stderr, "\rto upload, input filename or type q to cancel : ");
+					printf("\rto upload, input filename or type q to cancel : ");
+
+					char filename[BUFSIZE];
 					fgets(filename, BUFSIZE, stdin);
 
 					if(strlen(filename) < 2 | strstr(filename, "q") != NULL) {
 						continue;
 					}
 					sprintf(wbuf, "/upload %s\n", filename);
-					if (write(sock, wbuf, strlen(wbuf)) < 0) 
+					if (send(sock, wbuf, strlen(wbuf), 0) < 0) 
 						printf("Error : Write error on socket.\n");
 
-					if(connect(fsock, (struct sockaddr *)&file_addr, sizeof(file_addr)) == -1) {
-						printf("file connection error\n");
-						close(fsock);
-						continue;
-					}
-					int bytes_read;
+					fsock = client.tcp_connect(ip_addr, fport);
 					char buffer[BUFSIZE];
-					readlen = read(fsock, buffer, 22);
+					readlen = recv(fsock, buffer, 22, 0);
 					buffer[readlen]='\0';
 					printf("%s\n", buffer);
-					printf("buffer\n");
 					memset(buffer, 0, BUFSIZE);
 					filename[strlen(filename)-1]='\0';
 					FILE *fd = fopen(filename, "r");
 					while (feof(fd) == 0) {
-						bytes_read = fread(&buffer, sizeof(char), BUFSIZE-1, fd);
-						write(fsock, buffer, bytes_read);
+						readlen = fread(&buffer, sizeof(char), BUFSIZE-1, fd);
+						send(fsock, buffer, readlen, 0);
 						memset(buffer, 0, BUFSIZE);
 					}
-					close(fsock);
+					client.tcp_close(fsock);
 					fclose(fd);
 					printf("file send @ client\n");
 				}
@@ -131,16 +107,12 @@ int main(int argc, char* argv[]) {
 					strncpy(filename, buf+10, namelen);
 					filename[namelen]='\0';
 					sprintf(wbuf, "/download %s\n", filename);
-					if (write(sock, wbuf, strlen(wbuf)) < 0) 
+					if (send(sock, wbuf, strlen(wbuf), 0) < 0) 
 						printf("Error : Write error on socket.\n");
 
-					if(connect(fsock, (struct sockaddr *)&file_addr, sizeof(file_addr)) == -1) {
-						printf("file connection error\n");
-						close(fsock);
-						continue;
-					}		
+					fsock = client.tcp_connect(ip_addr, fport);
 					char buffer[BUFSIZE];
-					readlen = read(fsock, buffer, 22);
+					readlen = recv(fsock, buffer, 22, 0);
 					buffer[readlen]='\0';
 					printf("%s\n", buffer);
 					memset(buffer, 0, BUFSIZE);
@@ -149,23 +121,23 @@ int main(int argc, char* argv[]) {
 					size_t datasize;
 					int ind=0;
 					memset(buffer, 0, BUFSIZE);
-					while ((datasize = read(fsock, buffer, BUFSIZE-1)) > 0) {
+					while ((datasize = recv(fsock, buffer, BUFSIZE-1, 0)) > 0) {
 						ind = fwrite(&buffer, 1, datasize, fd);
 						if(ind < datasize) {
 					 		printf("File write failed.\n");;
 						}
 						memset(buffer, 0, BUFSIZE);
 					}
-					close(fsock);
+					client.tcp_close(fsock);
 					fclose(fd);
 					printf("file receive @ client\n");			
 				}
 				else {
 					if(buf[0]== '/') {
-					sprintf(wbuf, "%s\n", buf);
+						sprintf(wbuf, "%s\n", buf);
 					}
 					else sprintf(wbuf, "Client(%s): %s\n", str, buf);
-					if (write(sock, wbuf, strlen(wbuf)) < 0) 
+					if (send(sock, wbuf, strlen(wbuf), 0) < 0) 
 						printf("Error : Write error on socket.");
 				}
 			}
