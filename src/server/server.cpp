@@ -6,12 +6,6 @@
 #define MAXUSER 50
 #define MAXROOM 10
 
-struct client_info {
-	int sock;
-	int fsock;
-	int room;
-	char ip[20];
-};
 
 char rbuf[BUFSIZE]; 
 char wbuf[BUFSIZE];
@@ -19,9 +13,7 @@ char buf[BUFSIZE];
 
 int num_user=0;
 int room_info[MAXROOM][MAXUSER]={0,};
-struct client_info client[MAXUSER]; 
-
-int client_fsock;
+struct client_info client[MAXUSER];
 int addr_len; 
 
 void room(int);
@@ -29,9 +21,11 @@ void list_files(char*);
 void upload(int);
 void download(int);
 void help();
+
+CommunicationManager server;
+
 int main(int argc, char* argv[]) {
 
-	CommunicationManager server;
 
 	int port, fport;
 	int sock, client_sock;
@@ -56,7 +50,6 @@ int main(int argc, char* argv[]) {
 		for (i = 0; i < num_user; i++)
 			FD_SET(client[i].sock, &readfds);
 
-		//printf("monitering\n");
 		maxfd = sock;
 		for (i = 0; i < num_user; i++)
 			if (client[i].sock > maxfd)
@@ -71,13 +64,10 @@ int main(int argc, char* argv[]) {
 			}
 			printf("client connected\n");
 			printf("clinet ip : %s: %d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-			// char connection_msg[]="connected\0";
-			// write(client_sock, connection_msg, strlen(connection_msg));
 			char client_id[10];
 			sprintf(client_id, "%d", client_sock);
 			send(client_sock, client_id, strlen(client_id), 0);
 			client[num_user].sock = client_sock;
-			// client[num_user].fsock = client_fsock;
 			client[num_user].room = 0;
 			room_info[0][num_user]=1;
 			// strcpy(ip_list[num_user], buf);
@@ -158,7 +148,7 @@ int main(int argc, char* argv[]) {
 				else {
 					for(int j=0; j<num_user; j++) {
 						if(i==j) continue;
-						if(client[i].room==client[j].room)	write(client[j].sock, rbuf, readlen);
+						if(client[i].room==client[j].room)	send(client[j].sock, rbuf, readlen, 0);
 					}
 				}
 				printf("%s", rbuf);
@@ -192,6 +182,7 @@ void list_files(char* target_dir) {
 	else sprintf(wbuf, "There is no available files\n");
 }
 void upload(int fsock) {
+	int client_fsock;
 	struct sockaddr_in file_addr;
 	char filename[BUFSIZE];
 	int namelen=strlen(rbuf)-8;
@@ -200,7 +191,8 @@ void upload(int fsock) {
 	printf("receiving file: %s\n", filename);
 
 	size_t datasize;
-	int res_dir = mkdir("./files",0755);
+	int res_dir = mkdir("./files", 0755);
+
 	sprintf(rbuf, "files/%s", filename);
 	printf("%s\n", rbuf);
 
@@ -208,28 +200,17 @@ void upload(int fsock) {
 	if(client_fsock == -1) {
 		printf("accept error\n");
 	}
-	FILE* fd = fopen(rbuf, "w");
-	char buffer[BUFSIZE];
-	int ind=0;
-	sprintf(buffer, "file socket connected");
-	send(client_fsock, buffer, 22, 0);
 
-	memset(buffer, 0, BUFSIZE);
-	while ((datasize = recv(client_fsock, buffer, BUFSIZE-1, 0)) > 0) {
-		ind = fwrite(&buffer, 1, datasize, fd);
-		if(ind < datasize) {
-	 		printf("File write failed.\n");;
-		}
-		memset(buffer, 0, BUFSIZE);
-	}
-	printf("writing done\n");
-	close(client_fsock);
-	fclose(fd);
+	server.tcp_send_msg(client_fsock, "file socket connected");
+
+	server.tcp_recv_file(client_fsock, rbuf);
+
 	sprintf(wbuf, "file receive @ server\n");
 	printf("file socket closed\n");
 	memset(rbuf, 0, BUFSIZE);
 }
 void download(int fsock) {
+	int client_fsock;
 	struct sockaddr_in file_addr;
 	char filename[BUFSIZE];
 	int namelen=strlen(rbuf)-10;
@@ -242,20 +223,10 @@ void download(int fsock) {
 	}
 	sprintf(rbuf, "files/%s", filename);
 
-	FILE* fd = fopen(rbuf, "r");
-	char buffer[BUFSIZE];
-	sprintf(buffer, "file socket connected");
-	send(client_fsock, buffer, 22, 0);
-	int bytes_read;
+	server.tcp_send_msg(client_fsock, "file socket connected");
 
-	while (feof(fd) == 0) {
-		bytes_read = fread(&buffer, sizeof(char), BUFSIZE-1, fd);
-		send(client_fsock, buffer, bytes_read, 0);
-		memset(buffer, 0, BUFSIZE);
-	}
-	printf("writing done\n");
-	close(client_fsock);
-	fclose(fd);
+	server.tcp_send_file(client_fsock, rbuf);
+
 	sprintf(wbuf, "file send @ server\n");
 	printf("file socket closed\n");
 	memset(rbuf, 0, BUFSIZE);	

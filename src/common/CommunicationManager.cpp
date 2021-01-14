@@ -42,3 +42,41 @@ int CommunicationManager::tcp_connect(char* ip_addr, int port) {
 void CommunicationManager::tcp_close(int sock) {
 	close(sock);
 }
+
+void CommunicationManager::tcp_send_msg(int sock, char* msg) {
+    if (send(sock, msg, strlen(msg), 0) < 0) 
+        printf("Error : Write error on socket.\n");
+}
+void CommunicationManager::tcp_recv_msg(int sock, char* msg) {
+    int readlen;
+    readlen = recv(sock, msg, BUFSIZE, 0);
+    msg[readlen]='\0';
+}
+void CommunicationManager::tcp_send_file(int fsock, char* filename) {
+    char buffer[BUFSIZE];
+    int readlen;
+    FILE *fd = fopen(filename, "r");
+    while (feof(fd) == 0) {
+        readlen = fread(&buffer, sizeof(char), BUFSIZE-1, fd);
+        send(fsock, buffer, readlen, 0);
+        memset(buffer, 0, BUFSIZE);
+    }
+    tcp_close(fsock);
+    fclose(fd);
+}
+void CommunicationManager::tcp_recv_file(int fsock, char* filename) {
+    char buffer[BUFSIZE];
+    FILE *fd = fopen(filename, "w");
+    size_t datasize;
+    int ind;
+    memset(buffer, 0, BUFSIZE);
+    while ((datasize = recv(fsock, buffer, BUFSIZE-1, 0)) > 0) {
+        ind = fwrite(&buffer, 1, datasize, fd);
+        if(ind < datasize) {
+            printf("File write failed.\n");;
+        }
+        memset(buffer, 0, BUFSIZE);
+    }
+    tcp_close(fsock);
+    fclose(fd);
+}
