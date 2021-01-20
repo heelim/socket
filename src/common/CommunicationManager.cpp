@@ -1,4 +1,23 @@
 #include "CommunicationManager.h"
+
+void CommunicationManager::set_ip(char* ip) {
+	memcpy(ip_addr, ip, 16);
+}
+void CommunicationManager::set_port(int port) {
+	this->port = port;
+}
+void CommunicationManager::set_fport(int fport) {
+	this->fport = fport;
+}
+char* CommunicationManager::get_ip() {
+	return this->ip_addr;
+}
+int CommunicationManager::get_port() {
+	return this->port;
+}
+int CommunicationManager::get_fport() {
+	return this->fport;
+}
 int CommunicationManager::tcp_listen(int ip, int port, int backlog) {
     int sock;
     struct sockaddr_in addr;
@@ -19,7 +38,7 @@ int CommunicationManager::tcp_listen(int ip, int port, int backlog) {
     return sock;
 }
 
-int CommunicationManager::tcp_connect(char* ip_addr, int port) {
+int CommunicationManager::tcp_connect(int port) {
     int sock;
     sockaddr_in addr;
     sock = socket(AF_INET, SOCK_STREAM, 0);

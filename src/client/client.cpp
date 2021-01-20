@@ -4,14 +4,25 @@
 char rbuf[BUFSIZE];
 char wbuf[BUFSIZE];
 char buf[BUFSIZE];
+
 CommunicationManager client;
+
 void list_files(char*);
+void upload(int);
+void download(int);
+
 int main(int argc, char* argv[]) {
 	char ip_addr[] = "127.0.0.1"; //server ip addr
 	int port = 8888; //server port num
 	int fport = 9999;
+	client.set_ip(ip_addr);
+	client.set_port(port);
+	client.set_fport(fport);
+
 	int sock;
-	sock = client.tcp_connect(ip_addr, port);
+	sock = client.tcp_connect(port);
+	// int fsock = client.tcp_connect(ip_addr, fport);
+
 	if(sock < 0) return 0;
 	int readlen;
 	int maxfds;
@@ -50,54 +61,11 @@ int main(int argc, char* argv[]) {
 					exit(0);
 				}
 				if(strstr(buf, "/upload") != NULL) {
-					list_files("./");
-					printf("%s", wbuf);
-					printf("\rto upload, input filename or type q to cancel : ");
+					upload(sock);
 
-					char filename[BUFSIZE];
-					fgets(filename, BUFSIZE, stdin);
-					int namelen = strlen(filename);
-
-					if(namelen < 2 | strstr(filename, "q") != NULL) {
-						continue;
-					}
-					sprintf(wbuf, "/upload %s\n", filename);
-					filename[namelen-1]='\0';
-
-					client.tcp_send_msg(sock, wbuf);
-
-					int fsock;
-					fsock = client.tcp_connect(ip_addr, fport);
-
-					char buffer[BUFSIZE];
-					client.tcp_recv_msg(fsock, buffer);
-					printf("%s\n", buffer);
-
-					client.tcp_send_file(fsock, filename);
-					printf("file send @ client\n");
 				}
 				else if(!strncmp(buf, "/download", 9)) {
-					char filename[BUFSIZE];
-					int namelen = strlen(buf)-11;
-					if(namelen<1) {
-						printf("you should enter filename\n");
-						continue;
-					}
-					strncpy(filename, buf+10, namelen);
-					filename[namelen]='\0';
-
-					sprintf(wbuf, "/download %s\n", filename);
-
-					client.tcp_send_msg(sock, wbuf);
-
-					int fsock = client.tcp_connect(ip_addr, fport);
-
-					char buffer[BUFSIZE];
-					client.tcp_recv_msg(fsock, buffer);
-					printf("%s\n", buffer);
-
-					client.tcp_recv_file(fsock, filename);
-					printf("file receive @ client\n");			
+					download(sock);	
 				}
 				else {
 					if(buf[0]== '/') sprintf(wbuf, "%s\n", buf);
@@ -124,5 +92,52 @@ void list_files(char* target_dir) {
 		if(flag) sprintf(wbuf, "there is no file in directory\n");
 		closedir(d);
 	}
-	// else sprintf(wbuf, "There is no available files\n");
+}
+void upload(int sock) {
+	list_files("./");
+	printf("%s", wbuf);
+	printf("\rto upload, input filename or type q to cancel : ");
+
+	char filename[BUFSIZE];
+	fgets(filename, BUFSIZE, stdin);
+	int namelen = strlen(filename);
+
+	if(namelen < 2 | strstr(filename, "q") != NULL) {
+		return;
+	}
+	sprintf(wbuf, "/upload %s\n", filename);
+	filename[namelen-1]='\0';
+
+	client.tcp_send_msg(sock, wbuf);
+
+	int fsock = client.tcp_connect(client.get_fport());
+	char buffer[BUFSIZE];
+	client.tcp_recv_msg(fsock, buffer);
+	printf("%s\n", buffer);
+
+	client.tcp_send_file(fsock, filename);
+	printf("file send @ client\n");
+}
+void download(int sock) {
+	char filename[BUFSIZE];
+	int namelen = strlen(buf)-11;
+	if(namelen<1) {
+		printf("you should enter filename\n");
+		return;
+	}
+	strncpy(filename, buf+10, namelen);
+	filename[namelen]='\0';
+
+	sprintf(wbuf, "/download %s\n", filename);
+
+	client.tcp_send_msg(sock, wbuf);
+
+	int fsock = client.tcp_connect(client.get_fport());
+
+	char buffer[BUFSIZE];
+	client.tcp_recv_msg(fsock, buffer);
+	printf("%s\n", buffer);
+
+	client.tcp_recv_file(fsock, filename);
+	printf("file receive @ client\n");			
 }

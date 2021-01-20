@@ -13,8 +13,16 @@
 class CommunicationManager {
 public:
 	// CommunicationManager();
+	void set_ip(char*);
+	void set_port(int);
+	void set_fport(int);
+
+	char* get_ip();
+	int get_port();
+	int get_fport();
+	
 	int tcp_listen(int, int, int);
-	int tcp_connect(char*, int);
+	int tcp_connect(int);
 	void tcp_close(int);
 	void tcp_send_msg(int, char*);
 	void tcp_recv_msg(int, char*);
@@ -26,14 +34,15 @@ private:
 	int room_info[MAXROOM][MAXUSER]={0,};
 	struct client_info client[MAXUSER];
 
-	// int port, fport;
+	int port;
+	int fport;
 
 	// int sock, client_sock;
 	// struct sockaddr_in client_addr;
 	// int fsock; 
 
 	// struct sockaddr_in addr;
-	// char ip_addr[16]; 
+	char ip_addr[16]; 
 	// int port;
 	// int sock;
 	// int addrlen;	
