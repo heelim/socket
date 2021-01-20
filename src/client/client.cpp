@@ -21,7 +21,6 @@ int main(int argc, char* argv[]) {
 
 	int sock;
 	sock = client.tcp_connect(port);
-	// int fsock = client.tcp_connect(ip_addr, fport);
 
 	if(sock < 0) return 0;
 	int readlen;
@@ -77,6 +76,7 @@ int main(int argc, char* argv[]) {
 	}
 	return 0;
 }
+
 void list_files(char* target_dir) {
 	DIR *d;
 	struct dirent *dir;
